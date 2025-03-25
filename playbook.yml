@@ -1,0 +1,31 @@
+---
+- name: Clone GitHub Repository and Ensure Docker is Installed
+  hosts: my_servers
+  become: yes
+  vars:
+    github_repo: "https://github.com/Ilinapradhan/ambient-machine.git"
+    dest_dir: "/home/sentinel/test-ansible"
+    keyfile_path: "/data/configdb/keyfile"
+    github_pat: "{{ lookup('env', 'GITHUB_PAT') }}"  # Securely fetch PAT
+
+  tasks:
+    - name: Install Git
+      apt:
+        name: git
+        state: present 
+
+    - name: Clone the repository
+      git:
+        repo: "https://{{ github_pat }}@github.com/Ilinapradhan/ambient-machine.git"
+        dest: "{{ dest_dir }}"
+        clone: yes
+        update: yes
+
+    - name: Create .env file
+      copy:
+        dest: "{{ dest_dir }}/.env"
+        content: |
+          GITHUB_PAT="{{ github_pat }}"
+        owner: sentinel
+        group: sentinel
+        mode: '0644'
