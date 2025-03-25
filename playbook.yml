@@ -14,12 +14,30 @@
         name: git
         state: present 
 
+    - name: Check if Docker is installed
+      command: docker --version
+      register: docker_check
+      ignore_errors: yes  # Ignore error if Docker is not installed
+
+    - name: Install Docker if not installed
+      apt:
+        name: docker.io
+        state: present
+      when: docker_check.rc != 0  # Run only if Docker is not installed
+
     - name: Clone the repository
       git:
         repo: "https://{{ github_pat }}@github.com/Ilinapradhan/ambient-machine.git"
         dest: "{{ dest_dir }}"
         clone: yes
         update: yes
+    - name: Start and Enable Docker Service
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+
 
     - name: Create .env file
       copy:
@@ -29,3 +47,121 @@
         owner: sentinel
         group: sentinel
         mode: '0644'
+    - name: Correct permissions on the repository directory
+      file:
+        path: "{{ dest_dir }}"
+        owner: sentinel
+        group: sentinel
+        recurse: yes
+      become: yes
+   
+    - name: Checkout to 'sentinel' branch
+      git:
+        repo: "https://{{ github_pat }}@github.com/Ilinapradhan/ambient-machine.git"
+        dest: "{{ dest_dir }}"
+        version: "smart-poc"  # Checkout to 'sentinel' branch
+      become_user: sentinel
+
+    - name: Create MongoDB config directory
+      file:
+        path: /data/configdb
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    # REPLACED UUIDGEN WITH OPENSSL KEY GENERATION
+    - name: Generate proper MongoDB keyfile using OpenSSL
+      command: openssl rand -base64 756
+      register: mongo_key_result
+      changed_when: false
+      become: true
+
+    - name: Create MongoDB keyfile
+      copy:
+        dest: "{{ keyfile_path }}"
+        content: "{{ mongo_key_result.stdout }}"
+        owner: 999  # MongoDB container typically uses 999:999
+        group: 999
+        mode: '0400'
+      become: true
+    
+    - name: Create .env file with proper key
+      copy:
+        dest: "{{ dest_dir }}/.env"
+        content: |
+          MONGO_REPLICA_SET_KEY="{{ mongo_key_result.stdout }}"
+        owner: sentinel
+        group: sentinel
+        mode: '0644'
+
+    # Ensure docker-compose install URL is correct (fixed empty url)
+    - name: Install Docker Compose
+      get_url:
+        url: "https://github.com/docker/compose/releases/download/v2.34.0/docker-compose-linux-x86_64"
+        dest: /usr/local/bin/docker-compose
+        mode: '0755'
+        validate_certs: no
+      become: true
+
+    - name: Build and start MongoDB containers
+      command: docker-compose -f {{ dest_dir }}/docker-compose-mongo.yaml up --build -d
+      become_user: sentinel
+      environment:
+        MONGO_REPLICA_SET_KEY: "{{ mongo_key_result.stdout }}"
+
+
+    # New tasks for replica set initialization and user creation
+    - name: Wait for MongoDB port to be available
+      wait_for:
+        port: 27018
+        delay: 10
+        timeout: 300
+
+    - name: Check replica set status
+      command: >
+        docker exec mongodb-1 mongosh --host localhost --port 27018 -u root -p root
+        --authenticationDatabase admin --eval 'rs.status().ok'
+      register: rs_check
+      ignore_errors: yes
+      changed_when: false
+
+    - name: Initialize replica set if not configured
+      command: >
+        docker exec mongodb-1 mongosh --host localhost --port 27018 -u root -p root
+        --authenticationDatabase admin --eval 'rs.initiate()'
+      when: rs_check is failed
+      register: rs_initiate
+      failed_when: "'already initialized' not in rs_initiate.stderr"
+
+    - name: Pause to allow primary election
+      pause:
+        seconds: 30
+      when: rs_check is failed
+
+    - name: Create sentinel database user
+      command: >
+        docker exec mongodb-1 mongosh --host localhost --port 27018 -u root -p root
+        --authenticationDatabase admin --eval '
+        db.getSiblingDB("sentinel").createUser({
+          user: "sentinel",
+          pwd: "sentinelMongo_test123",
+          roles: [ "readWrite", "dbAdmin" ],
+          passwordDigestor: "server"
+        })'
+      register: user_creation
+      failed_when: >
+        user_creation.rc != 0 and
+        "already exists" not in user_creation.stderr
+
+    - name: Verify replica set status
+      command: >
+        docker exec mongodb-1 mongosh --host localhost --port 27018 -u root -p root
+        --authenticationDatabase admin --eval 'rs.status()'
+      register: rs_status
+      changed_when: false
+
+    - name: Display replica set status
+      debug:
+        var: rs_status.stdout_lines
+
