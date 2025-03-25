@@ -1,0 +1,26 @@
+- name: Setup MongoDB Configuration
+  hosts: my_servers
+  become: yes
+  vars:
+    keyfile_path: "/data/configdb/keyfile"
+  tasks:
+    - name: Create MongoDB config directory
+      file:
+        path: /data/configdb
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Generate MongoDB keyfile
+      command: openssl rand -base64 756
+      register: mongo_key_result
+      changed_when: false
+
+    - name: Create MongoDB keyfile
+      copy:
+        dest: "{{ keyfile_path }}"
+        content: "{{ mongo_key_result.stdout }}"
+        owner: 999
+        group: 999
+        mode: '0400'

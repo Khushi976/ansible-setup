@@ -1,0 +1,39 @@
+- name: Initialize MongoDB Replica Set
+  hosts: my_servers
+  become: yes
+  tasks:
+    - name: Wait for MongoDB to be available
+      wait_for:
+        port: 27018
+        delay: 10
+        timeout: 300
+
+    - name: Check replica set status
+      command: >
+        docker exec mongodb-1 mongosh --host localhost --port 27018 -u root -p root
+        --authenticationDatabase admin --eval 'rs.status().ok'
+      register: rs_check
+      ignore_errors: yes
+      changed_when: false
+
+    - name: Initialize replica set if not configured
+      command: >
+        docker exec mongodb-1 mongosh --host localhost --port 27018 -u root -p root
+        --authenticationDatabase admin --eval 'rs.initiate()'
+      when: rs_check is failed
+
+    - name: Pause to allow primary election
+      pause:
+        seconds: 30
+      when: rs_check is failed
+
+    - name: Create MongoDB user
+      command: >
+        docker exec mongodb-1 mongosh --host localhost --port 27018 -u root -p root
+        --authenticationDatabase admin --eval '
+        db.getSiblingDB("sentinel").createUser({
+          user: "sentinel",
+          pwd: "sentinelMongo_test123",
+          roles: [ "readWrite", "dbAdmin" ],
+          passwordDigestor: "server"
+        })'

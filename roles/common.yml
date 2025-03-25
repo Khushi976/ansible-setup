@@ -1,0 +1,8 @@
+- name: Common Setup
+  hosts: my_servers
+  become: yes
+  tasks:
+    - name: Install Git
+      apt:
+        name: git
+        state: present 

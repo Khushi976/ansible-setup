@@ -1,0 +1,6 @@
+- import_playbook: roles/common.yml
+- import_playbook: roles/git_clone.yml
+- import_playbook: roles/docker_setup.yml
+- import_playbook: roles/mongodb_setup.yml
+- import_playbook: roles/docker_compose.yml
+- import_playbook: roles/mongodb_replica.yml

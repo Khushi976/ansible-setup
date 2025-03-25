@@ -1,0 +1,20 @@
+- name: Install and Setup Docker
+  hosts: my_servers
+  become: yes
+  tasks:
+    - name: Check if Docker is installed
+      command: docker --version
+      register: docker_check
+      ignore_errors: yes
+
+    - name: Install Docker if not installed
+      apt:
+        name: docker.io
+        state: present
+      when: docker_check.rc != 0
+
+    - name: Start and Enable Docker Service
+      systemd:
+        name: docker
+        state: started
+        enabled: yes

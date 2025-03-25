@@ -1,0 +1,16 @@
+- name: Clone GitHub Repository
+  hosts: my_servers
+  become: yes
+  vars:
+    github_repo: "https://github.com/Ilinapradhan/ambient-machine.git"
+    dest_dir: "/home/sentinel/test-ansible"
+    github_pat: "{{ lookup('env', 'GITHUB_PAT') }}"
+  tasks:
+    - name: Clone the repository
+      git:
+        repo: "https://{{ github_pat }}@github.com/Ilinapradhan/ambient-machine.git"
+        dest: "{{ dest_dir }}"
+        clone: yes
+        update: yes
+      become_user: sentinel
+
