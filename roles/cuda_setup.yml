@@ -602,22 +602,7 @@
         name: docker
         state: restarted
 
-    # - name: Run GPU-enabled Docker container
-    #   docker_container:
-    #     name: gpu_container
-    #     image: nvidia/cuda:12.1.1-base-ubuntu22.04
-    #     runtime: nvidia
-    #     env:
-    #       NVIDIA_VISIBLE_DEVICES: all
-    #       NVIDIA_DRIVER_CAPABILITIES: all
-    #     command: ["nvidia-smi"]
-    #     auto_remove: yes
-    #     detach: no
-    #   register: docker_output
 
-    # - name: Display GPU container output
-    #   debug:
-    #     msg: "{{ docker_output.stdout }}"
 
     - name: Run GPU-enabled Docker container
       docker_container:
