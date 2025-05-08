@@ -17,7 +17,7 @@
     - name: Install Miniconda
       command: bash /tmp/miniconda.sh -b -u -p /opt/miniconda3
 
-    - name: Remove Miniconda installer
+    - name: Removing Miniconda installer
       file:
         path: /tmp/miniconda.sh
         state: absent
