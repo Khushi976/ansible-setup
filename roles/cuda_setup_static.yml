@@ -1,0 +1,63 @@
+
+---
+- name: Install NVIDIA Driver and CUDA Toolkit via APT Repository
+  hosts: all
+  become: yes
+  tasks:
+
+    - name: Add NVIDIA package repository GPG key
+      apt_key:
+        url: https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/3bf863cc.pub
+        state: present
+
+    - name: Add NVIDIA CUDA repository
+      apt_repository:
+        repo: deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/ /
+        state: present
+        filename: nvidia-cuda
+
+    - name: Update APT package index
+      apt:
+        update_cache: yes
+
+    - name: Install CUDA Toolkit and NVIDIA driver
+      apt:
+        name: cuda
+        state: present
+
+    - name: Add CUDA to PATH and LD_LIBRARY_PATH
+      copy:
+        dest: /etc/profile.d/cuda.sh
+        content: |
+          export PATH=/usr/local/cuda/bin:$PATH
+          export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+        mode: '0755'
+
+    - name: Reboot the system to apply changes
+      reboot:
+        msg: "Reboot initiated by Ansible for CUDA installation"
+        connect_timeout: 5
+        reboot_timeout: 600
+        pre_reboot_delay: 0
+        post_reboot_delay: 30
+        test_command: whoami
+
+    - name: Verify NVIDIA installation with nvidia-smi
+      command: nvidia-smi
+      register: nvidia_smi_output
+      changed_when: false
+      ignore_errors: yes
+
+    - name: Display nvidia-smi output
+      debug:
+        msg: "{{ nvidia_smi_output.stdout | default('nvidia-smi command failed') }}"
+
+    - name: Verify CUDA installation with nvcc
+      command: /usr/local/cuda/bin/nvcc -V
+      register: nvcc_output
+      changed_when: false
+      ignore_errors: yes
+
+    - name: Display nvcc version output
+      debug:
+        msg: "{{ nvcc_output.stdout | default('nvcc not found') }}"

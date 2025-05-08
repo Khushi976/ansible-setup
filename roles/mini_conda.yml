@@ -1,0 +1,23 @@
+- name: Install Miniconda
+  hosts: my_servers
+  become: yes
+  tasks:
+    - name: Create installation directory
+      file:
+        path: /opt/miniconda3
+        state: directory
+        mode: '0755'
+
+    - name: Download Miniconda installer
+      get_url:
+        url: https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+        dest: /tmp/miniconda.sh
+        mode: '0755'
+
+    - name: Install Miniconda
+      command: bash /tmp/miniconda.sh -b -u -p /opt/miniconda3
+
+    - name: Remove Miniconda installer
+      file:
+        path: /tmp/miniconda.sh
+        state: absent

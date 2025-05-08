@@ -1,0 +1,192 @@
+# ---
+# - name: Linux Health Check
+#   hosts: my_servers
+#   become: yes
+#   tasks:
+
+#     - name: Gather OS distribution facts
+#       ansible.builtin.setup:
+#         filter: ansible_distribution
+#       register: distro_info
+
+#     - name: Check uptime
+#       command: uptime
+#       register: uptime_result
+
+#     - name: Show uptime
+#       debug:
+#         msg: "{{ uptime_result.stdout }}"
+
+#     - name: Check CPU usage
+#       shell: top -b -n1 | grep "Cpu(s)"
+#       register: cpu_usage
+
+#     - name: Show CPU usage
+#       debug:
+#         msg: "{{ cpu_usage.stdout }}"
+
+#     - name: Check memory usage
+#       shell: free -h
+#       register: memory_usage
+
+#     - name: Show memory usage
+#       debug:
+#         msg: "{{ memory_usage.stdout }}"
+
+#     - name: Check disk usage
+#       shell: df -h
+#       register: disk_usage
+
+#     - name: Show disk usage
+#       debug:
+#         msg: "{{ disk_usage.stdout }}"
+
+#     - name: Check top 5 memory consuming processes
+#       shell: ps aux --sort=-%mem | head -n 6
+#       register: top_memory_processes
+
+#     - name: Show top memory processes
+#       debug:
+#         msg: "{{ top_memory_processes.stdout_lines }}"
+
+#     - name: Check top 5 CPU consuming processes
+#       shell: ps aux --sort=-%cpu | head -n 6
+#       register: top_cpu_processes
+
+#     - name: Show top CPU processes
+#       debug:
+#         msg: "{{ top_cpu_processes.stdout_lines }}"
+
+#     - name: Check system load average
+#       shell: cat /proc/loadavg
+#       register: load_avg
+
+#     - name: Show load average
+#       debug:
+#         msg: "{{ load_avg.stdout }}"
+
+#     - name: Check status of SSH service
+#       service:
+#         name: sshd
+#         state: started
+#       register: ssh_status
+
+#     - name: Show SSH service status
+#       debug:
+#         msg: "SSH service is {{ 'running' if ssh_status.state == 'started' else 'not running' }}"
+
+#     - name: Check if system is Ubuntu or Debian
+#       when: "'Ubuntu' in distro_info.ansible_facts.ansible_distribution or 'Debian' in distro_info.ansible_facts.ansible_distribution"
+#       block:
+
+#         - name: List installed dpkg packages
+#           shell: dpkg -l
+#           register: dpkg_list
+
+#         - name: Show installed packages
+#           debug:
+#             msg: "{{ dpkg_list.stdout_lines | list | join('\n') }}"
+        
+#         - name: Check for essential packages
+#           shell: dpkg -l | grep -E 'openssh-server|curl|sudo'
+#           register: essential_pkgs
+
+#         - name: Show essential package check result
+#           debug:
+#             msg: "{{ essential_pkgs.stdout_lines }}"
+---
+- name: Linux Health Check
+  hosts: my_servers
+  become: yes
+  tasks:
+
+    - name: Gather OS distribution facts
+      ansible.builtin.setup:
+        filter: ansible_distribution
+      register: distro_info
+
+    - name: === UPTIME ===
+      shell: uptime
+      register: uptime_result
+
+    - name: Show uptime
+      debug:
+        msg: "{{ uptime_result.stdout }}"
+
+    - name: === CPU USAGE ===
+      shell: top -b -n1 | grep 'Cpu(s)'
+      register: cpu_usage
+
+    - name: Show CPU usage
+      debug:
+        msg: "{{ cpu_usage.stdout }}"
+
+    - name: === MEMORY USAGE ===
+      shell: free -h
+      register: memory_usage
+
+    - name: Show memory usage
+      debug:
+        msg: "{{ memory_usage.stdout_lines }}"
+
+    - name: === DISK USAGE ===
+      shell: df -h
+      register: disk_usage
+
+    - name: Show disk usage
+      debug:
+        msg: "{{ disk_usage.stdout_lines }}"
+
+    - name: === TOP MEMORY PROCESSES ===
+      shell: ps aux --sort=-%mem | head -n 6
+      register: top_memory_processes
+
+    - name: Show top memory processes
+      debug:
+        msg: "{{ top_memory_processes.stdout_lines }}"
+
+    - name: === TOP CPU PROCESSES ===
+      shell: ps aux --sort=-%cpu | head -n 6
+      register: top_cpu_processes
+
+    - name: Show top CPU processes
+      debug:
+        msg: "{{ top_cpu_processes.stdout_lines }}"
+
+    - name: === LOAD AVERAGE ===
+      shell: cat /proc/loadavg
+      register: load_avg
+
+    - name: Show load average
+      debug:
+        msg: "{{ load_avg.stdout }}"
+
+    - name: === SSH SERVICE STATUS ===
+      service:
+        name: sshd
+        state: started
+      register: ssh_status
+
+    - name: Show SSH service status
+      debug:
+        msg: "SSH service is {{ 'running' if ssh_status.state == 'started' else 'not running' }}"
+
+    - name: === DPKG PACKAGE CHECK (UBUNTU/DEBIAN) ===
+      when: "'Ubuntu' in distro_info.ansible_facts.ansible_distribution or 'Debian' in distro_info.ansible_facts.ansible_distribution"
+      block:
+
+        - name: List first 20 installed dpkg packages
+          shell: dpkg -l | head -n 20
+          register: dpkg_list
+
+        - name: Show installed packages (first 20)
+          debug:
+            msg: "{{ dpkg_list.stdout_lines }}"
+
+        - name: Check for essential packages
+          shell: dpkg -l | grep -E 'openssh-server|curl|sudo'
+          register: essential_pkgs
+
+        - name: Show essential package check result
+          debug:
+            msg: "{{ essential_pkgs.stdout_lines }}"
