@@ -1,88 +1,159 @@
-# Ansible Automation Setup
-Ansible Setup for MongoDB and GitHub Repository Cloning
+**🛠️ Ansible Automation Project**
 
-This Ansible playbook automates the setup of Docker, cloning a GitHub repository, and configuring MongoDB with a replica set and user authentication.
+This project is a modular automation setup using Ansible to manage and configure servers for various development and production tasks. It includes independent playbooks for setting up Docker, MongoDB, CUDA, system health checks, Git cloning, and more.
 
-**Prerequisites**
+---
 
-Ansible installed on the control machine
+**📁 Project Structure**
 
-Target servers accessible via SSH
+.
+├── roles/
+│ ├── Linux_health.yml
+│ ├── common.yml
+│ ├── cuda_setup.yml
+│ ├── cuda_setup_static.yml
+│ ├── docker_compose.yml
+│ ├── docker_setup.yml
+│ ├── git_clone.yml
+│ ├── mini_conda.yml
+│ ├── mongodb_replica.yml
+│ └── mongodb_setup.yml
+├── hosts.ini
+├── main.yml
+├── playbook.yml
+├── .gitignore
+└── README.md
 
-A valid GitHub personal access token (PAT) stored in an .env file
+---
 
-Root or sudo privileges on the target machines
+**🧾 Inventory Setup**
 
-**Features**
+Your `hosts.ini` defines the remote servers Ansible connects to.
 
-Installs Git and Docker
+Example `hosts.ini`:
 
-Clones a specified GitHub repository
+```ini
+[all]
+192.168.1.10 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/id_rsa
+192.168.1.11 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/id_rsa
 
-Configures MongoDB with a secure keyfile
+[db]
+192.168.1.11
 
-Initializes a MongoDB replica set
+[web]
+192.168.1.10
 
-Creates a database user
+**
+▶️ Running the Playbooks**
+Run the full setup:
+ansible-playbook -i hosts.ini playbook.yml
+Run individual role playbooks:
+ansible-playbook -i hosts.ini roles/docker_setup.yml
+ansible-playbook -i hosts.ini roles/mongodb_setup.yml
 
-Starts MongoDB containers using Docker Compose
 
-Waits for MongoDB to be ready and verifies the replica set status
+**🧩 Role Descriptions**
 
-**Setup Instructions**
+File	Description
+common.yml	Base utilities, system updates
+Linux_health.yml	System health checks (CPU, memory, disk, etc.)
+cuda_setup.yml	CUDA toolkit installation using default sources
+cuda_setup_static.yml	Static CUDA installation method
+docker_setup.yml	Installs Docker engine
+docker_compose.yml	Installs Docker Compose
+git_clone.yml	Clones repositories from a Git source
+mini_conda.yml	Installs Miniconda for Python environments
+mongodb_setup.yml	Sets up a single-node MongoDB instance
+mongodb_replica.yml	Configures MongoDB replica set
 
-1. Store GitHub PAT Securely
+**📜 Example playbook.yml**
 
-To avoid exposing your GitHub personal access token in the playbook, store it in an .env file (which should be added to .gitignore to prevent accidental commits):
+- name: Execute Ansible Automation Setup
+  hosts: all
+  become: true
+  tasks:
+    - name: Include Common Setup
+      import_playbook: roles/common.yml
 
-# .env
-GITHUB_PAT="your_personal_access_token"
+    - name: Setup Docker
+      import_playbook: roles/docker_setup.yml
 
-2. Update .gitignore
+    - name: Install Docker Compose
+      import_playbook: roles/docker_compose.yml
 
-Add the .env file to .gitignore to prevent it from being committed to the repository:
+    - name: Setup CUDA
+      import_playbook: roles/cuda_setup.yml
 
-# .gitignore
+    - name: Install Miniconda
+      import_playbook: roles/mini_conda.yml
+
+    - name: Setup MongoDB
+      import_playbook: roles/mongodb_setup.yml
+
+    - name: Configure MongoDB Replica
+      import_playbook: roles/mongodb_replica.yml
+
+    - name: Git Repository Cloning
+      import_playbook: roles/git_clone.yml
+
+    - name: Run System Health Checks
+      import_playbook: roles/Linux_health.yml
+
+
+**🔐 Using Ansible Vault**
+To encrypt sensitive variable or credential files:
+
+ansible-vault encrypt secrets.yml
+
+Run a playbook with the vault password:
+ansible-playbook -i hosts.ini playbook.yml --ask-vault-pass
+
+
+**🧪 Tips & Best Practices**
+
+✅ Use ansible-lint for YAML and playbook validation.
+🛡️ Protect credentials using ansible-vault.
+🔁 Ensure playbooks are idempotent (safe to run multiple times).
+🔍 Test on non-production systems before wide-scale deployment.
+✍️ Document variables and parameters within each YAML file.
+🛡️ .gitignore Suggestion
+
+
+
+Here’s an example .gitignore to keep your repository clean:
+*.retry
+*.log
+secrets.yml
+__pycache__/
+*.pyc
+.idea/
+.vscode/
 .env
 
-3. Run the Ansible Playbook
 
-Ensure your inventory file (e.g., inventory.ini) is properly set up with your target server(s). Then execute the playbook:
 
-ansible-playbook -i inventory.ini playbook.yml --extra-vars "@.env"
+📄 License
+This project is licensed under the MIT License. See the LICENSE file for details.
 
-4. Verify MongoDB Setup
 
-To check the status of the MongoDB replica set, run:
+Happy Automating with Ansible!
 
-docker exec mongodb-1 mongosh --host localhost --port 27018 -u root -p root --authenticationDatabase admin --eval 'rs.status()'
+Let me know if you want this generated as a downloadable file or adapted to Markdown with HTML formatting for a website.
 
-5. Check Running Containers
 
-Use the following command to verify that the MongoDB containers are running:
 
-docker ps
 
-6. Verify MongoDB User Creation
 
-Run the following command to verify that the sentinel user exists:
 
-docker exec mongodb-1 mongosh --host localhost --port 27018 -u root -p root --authenticationDatabase admin --eval 'db.getSiblingDB("sentinel").getUsers()'
 
-Troubleshooting
 
-If the playbook fails due to permission issues, try running it with sudo.
 
-If GitHub authentication fails, ensure that your PAT is correct and has the required repository permissions.
 
-If MongoDB doesn't start, check container logs using:
 
-docker logs mongodb-1
+:
 
-If the replica set initialization fails, manually run:
 
-docker exec mongodb-1 mongosh --host localhost --port 27018 -u root -p root --authenticationDatabase admin --eval 'rs.initiate()'
 
-Contributions
 
-Feel free to contribute by creating a pull request or raising an issue in the repository.
+
+
